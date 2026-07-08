@@ -2,8 +2,8 @@ import { Subsidy } from "@/types";
 
 type Props = {
   subsidies: Subsidy[];
-  checks: Record<number, boolean[]>;
-  onToggle: (sid: number, idx: number) => void;
+  checks: Record<string, boolean[]>;
+  onToggle: (sid: string, idx: number) => void;
   onBack: () => void;
 };
 

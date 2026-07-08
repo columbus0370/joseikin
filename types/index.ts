@@ -3,12 +3,12 @@ export type ShopInfo = {
   industry: string;
   prefecture: string;
   employees: string;
-  established: string;
-  hasPartTime: boolean;
+  purpose: string;
+  keyword: string;
 };
 
 export type Subsidy = {
-  id: number;
+  id: string;
   name: string;
   org: string;
   amount: string;
@@ -23,5 +23,4 @@ export type Subsidy = {
 export type SearchResult = {
   subsidies: Subsidy[];
   source: "api" | "fallback";
-  searchQueries: string[];
 };

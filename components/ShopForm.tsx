@@ -23,24 +23,29 @@ const PREFECTURES = [
   "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
 ];
 
+const USE_PURPOSES = [
+  "設備投資",
+  "販路開拓・マーケティング",
+  "雇用・人材育成",
+  "IT化・デジタル化",
+  "事業再構築",
+  "研究開発",
+  "事業承継・引継ぎ",
+  "創業・起業",
+  "その他",
+];
+
 type Props = {
   shopInfo: ShopInfo;
   onChange: (info: ShopInfo) => void;
   onSubmit: () => void;
   loading: boolean;
-  searchQueries: string[];
 };
 
-export default function ShopForm({
-  shopInfo,
-  onChange,
-  onSubmit,
-  loading,
-  searchQueries,
-}: Props) {
+export default function ShopForm({ shopInfo, onChange, onSubmit, loading }: Props) {
   const isValid = shopInfo.industry !== "" && shopInfo.employees !== "" && shopInfo.prefecture !== "";
 
-  const set = (key: keyof ShopInfo, value: string | boolean) =>
+  const set = (key: keyof ShopInfo, value: string) =>
     onChange({ ...shopInfo, [key]: value });
 
   return (
@@ -72,9 +77,7 @@ export default function ShopForm({
           >
             <option value="">選択してください</option>
             {INDUSTRIES.map((ind) => (
-              <option key={ind} value={ind}>
-                {ind}
-              </option>
+              <option key={ind} value={ind}>{ind}</option>
             ))}
           </select>
         </div>
@@ -90,9 +93,7 @@ export default function ShopForm({
           >
             <option value="">選択してください</option>
             {PREFECTURES.map((pref) => (
-              <option key={pref} value={pref}>
-                {pref}
-              </option>
+              <option key={pref} value={pref}>{pref}</option>
             ))}
           </select>
         </div>
@@ -113,30 +114,32 @@ export default function ShopForm({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            設立年（任意）
+            利用目的（任意）
           </label>
-          <input
-            type="number"
-            value={shopInfo.established}
-            onChange={(e) => set("established", e.target.value)}
-            placeholder="例：2015"
-            min="1900"
-            max={new Date().getFullYear()}
+          <select
+            value={shopInfo.purpose}
+            onChange={(e) => set("purpose", e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          >
+            <option value="">選択してください</option>
+            {USE_PURPOSES.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="hasPartTime"
-            checked={shopInfo.hasPartTime}
-            onChange={(e) => set("hasPartTime", e.target.checked)}
-            className="w-4 h-4 text-blue-600 rounded"
-          />
-          <label htmlFor="hasPartTime" className="text-sm text-gray-700">
-            非正規雇用者（パート・アルバイト）がいる
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            キーワード（任意）
           </label>
+          <input
+            type="text"
+            value={shopInfo.keyword}
+            onChange={(e) => set("keyword", e.target.value)}
+            placeholder="例：省エネ、DX、雇用"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-gray-400 mt-1">未入力の場合は業種名で検索します</p>
         </div>
       </div>
 
@@ -155,21 +158,12 @@ export default function ShopForm({
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
-            検索中...
+            jGrantsを検索中...
           </span>
         ) : (
           "助成金を検索"
         )}
       </button>
-
-      {loading && searchQueries.length > 0 && (
-        <div className="mt-3 p-3 bg-blue-50 rounded-lg text-xs text-blue-700 space-y-1">
-          <p className="font-medium">検索クエリ:</p>
-          {searchQueries.map((q, i) => (
-            <p key={i} className="truncate">🔍 {q}</p>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -1,70 +1,94 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  fetchSubsidyList,
+  fetchSubsidyDetail,
+  JGrantsDetail,
+} from "@/lib/jgrants";
+import { Subsidy } from "@/types";
 
 const COLORS = [
   "#2563eb", "#7c3aed", "#0891b2", "#059669",
   "#dc2626", "#d97706", "#0d9488", "#9333ea",
 ];
 
+const GENERIC_FIELDS = [
+  "申請書（所定様式）",
+  "事業計画書",
+  "決算書または確定申告書（直近2期分）",
+  "法人登記簿謄本または個人事業主の開業届",
+  "見積書（2社以上）",
+];
+
+function formatAmount(limit?: number): string {
+  if (!limit || limit === 0) return "要確認";
+  if (limit >= 100000000) {
+    const v = limit / 100000000;
+    return `最大${Number.isInteger(v) ? v : v.toFixed(1)}億円`;
+  }
+  const man = Math.round(limit / 10000);
+  return `最大${man.toLocaleString("ja-JP")}万円`;
+}
+
+function formatDeadline(dt?: string): string {
+  if (!dt) return "随時受付";
+  const s = dt.replace(/\//g, "-").slice(0, 10);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return dt;
+  return `${m[1]}年${parseInt(m[2])}月${parseInt(m[3])}日`;
+}
+
+function buildFields(detail: JGrantsDetail): string[] {
+  const base: string[] = [];
+  if (detail.application_guidelines) base.push("申請の手引き");
+  if (detail.application_form) base.push("申請様式（所定書式）");
+  const fields = base.length > 0 ? base : [...GENERIC_FIELDS];
+  fields.push("gBizIDプライム（jGrants電子申請に必要）");
+  return fields;
+}
+
+function buildTags(detail: JGrantsDetail): string[] {
+  const tags: string[] = [];
+  if (detail.subsidy_type) tags.push(detail.subsidy_type);
+  if (detail.target_industry) tags.push(detail.target_industry.split("，")[0]);
+  if (detail.use_purpose) tags.push(detail.use_purpose.split("・")[0]);
+  return tags.filter((t, i, a) => t && a.indexOf(t) === i).slice(0, 3);
+}
+
 export async function POST(req: NextRequest) {
   const shopInfo = await req.json();
 
-  const client = new Anthropic();
-
-  const prompt = `あなたは日本の助成金・補助金の専門家です。
-以下の事業者情報をもとに、現在申請可能な助成金・補助金をweb_searchで調査してください。
-
-【事業者情報】
-- 業種: ${shopInfo.industry}
-- 所在地: ${shopInfo.prefecture}
-- 従業員数: ${shopInfo.employees}人
-- 設立年: ${shopInfo.established || "不明"}
-- 非正規雇用: ${shopInfo.hasPartTime ? "あり" : "なし"}
-
-【指示】
-1. web_searchで「${shopInfo.industry} ${shopInfo.prefecture} 助成金 補助金 2025 申請」を検索する
-2. 国・都道府県・市区町村レベルの制度を幅広く5〜8件調査する
-3. 結果を以下のJSON配列のみで返す。説明文・マークダウン記号は不要
-
-[
-  {
-    "id": 1,
-    "name": "助成金名",
-    "org": "実施機関",
-    "amount": "補助額",
-    "deadline": "締切",
-    "tags": ["タグ1","タグ2"],
-    "description": "概要2文",
-    "fields": ["必要書類1","必要書類2","必要書類3"],
-    "source_url": "公式URL"
-  }
-]`;
-
   try {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages: [{ role: "user", content: prompt }],
-    });
+    const list = await fetchSubsidyList(shopInfo);
+    const top8 = list.slice(0, 8);
 
-    const searchQueries = response.content
-      .filter((b) => b.type === "tool_use" && b.name === "web_search")
-      .map((b: any) => b.input?.query ?? "");
-
-    const rawText = response.content
-      .filter((b) => b.type === "text")
-      .map((b: any) => b.text)
-      .join("");
-
-    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error("JSON not found");
-
-    const subsidies = JSON.parse(jsonMatch[0]).map(
-      (item: any, i: number) => ({ ...item, color: COLORS[i % COLORS.length] })
+    const detailResults = await Promise.allSettled(
+      top8.map((s) => fetchSubsidyDetail(s.id))
     );
 
-    return NextResponse.json({ subsidies, source: "api", searchQueries });
+    const subsidies: Subsidy[] = detailResults
+      .map((r, i) => {
+        const summary = top8[i];
+        const detail: JGrantsDetail =
+          r.status === "fulfilled" ? r.value : (summary as JGrantsDetail);
+
+        return {
+          id: summary.id,
+          name: detail.subsidy_title ?? summary.subsidy_title ?? "（名称不明）",
+          org: detail.government_agencies ?? summary.government_agencies ?? "（機関不明）",
+          amount: formatAmount(detail.subsidy_max_limit ?? summary.subsidy_max_limit),
+          deadline: formatDeadline(
+            detail.acceptance_end_datetime ?? summary.acceptance_end_datetime
+          ),
+          tags: buildTags(detail),
+          description: detail.outline_of_grant?.slice(0, 120) ?? "",
+          fields: buildFields(detail),
+          source_url: detail.url_1 ?? detail.url_2 ?? undefined,
+          color: COLORS[i % COLORS.length],
+        } satisfies Subsidy;
+      })
+      .filter((s) => s.name !== "（名称不明）");
+
+    return NextResponse.json({ subsidies, source: "api" });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "search_failed" }, { status: 500 });

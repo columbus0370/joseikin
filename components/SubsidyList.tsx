@@ -2,21 +2,37 @@ import { Subsidy } from "@/types";
 
 type Props = {
   subsidies: Subsidy[];
-  selected: number[];
-  onToggle: (id: number) => void;
+  selected: string[];
+  onToggle: (id: string) => void;
   source: string;
   onNext: () => void;
-  searchQueries: string[];
 };
 
-export default function SubsidyList({
-  subsidies,
-  selected,
-  onToggle,
-  source,
-  onNext,
-  searchQueries,
-}: Props) {
+function parseDaysRemaining(deadline: string): number | null {
+  const m = deadline.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+  if (!m) return null;
+  const date = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+  return Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
+function DeadlineBadge({ deadline }: { deadline: string }) {
+  const days = parseDaysRemaining(deadline);
+  if (days === null) return null;
+  if (days < 0) return <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-400">締切済</span>;
+
+  const color =
+    days <= 7 ? "bg-red-100 text-red-700" :
+    days <= 30 ? "bg-orange-100 text-orange-700" :
+    "bg-green-100 text-green-700";
+
+  return (
+    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${color}`}>
+      残{days}日
+    </span>
+  );
+}
+
+export default function SubsidyList({ subsidies, selected, onToggle, source, onNext }: Props) {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -30,18 +46,9 @@ export default function SubsidyList({
               : "bg-amber-100 text-amber-700"
           }`}
         >
-          {source === "api" ? "🌐 Web検索結果" : "📦 ローカルDB"}
+          {source === "api" ? "🏛️ jGrants公式データ" : "📦 ローカルDB"}
         </span>
       </div>
-
-      {searchQueries.length > 0 && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 space-y-1">
-          <p className="font-medium text-gray-600">実行した検索クエリ:</p>
-          {searchQueries.map((q, i) => (
-            <p key={i} className="truncate">🔍 {q}</p>
-          ))}
-        </div>
-      )}
 
       <p className="text-sm text-gray-500 mb-4">
         申請したい助成金を選択してください（複数可）
@@ -81,9 +88,11 @@ export default function SubsidyList({
                   )}
                 </div>
 
-                <p className="text-xs text-gray-600 mt-2 leading-relaxed">
-                  {sub.description}
-                </p>
+                {sub.description && (
+                  <p className="text-xs text-gray-600 mt-2 leading-relaxed line-clamp-2">
+                    {sub.description}
+                  </p>
+                )}
 
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {sub.tags.map((tag) => (
@@ -97,11 +106,12 @@ export default function SubsidyList({
                 </div>
 
                 <div className="flex items-center justify-between mt-3">
-                  <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-3 text-xs flex-wrap">
                     <span className="font-semibold text-green-700">
                       💰 {sub.amount}
                     </span>
                     <span className="text-gray-500">📅 {sub.deadline}</span>
+                    <DeadlineBadge deadline={sub.deadline} />
                   </div>
                   {sub.source_url && (
                     <a
@@ -109,7 +119,7 @@ export default function SubsidyList({
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-blue-600 hover:underline shrink-0"
                     >
                       公式サイト →
                     </a>
