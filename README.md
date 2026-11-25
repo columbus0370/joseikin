@@ -1,3 +1,11 @@
+# 助成金マッチング（プロトタイプ）
+
+> 企業の条件に合う助成金・補助金を探すためのマッチングツールのプロトタイプです（Next.js / TypeScript）。
+
+**ステータス**: プロトタイプ（実証用）
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -34,3 +42,13 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+---
+
+## About the author
+
+Built by **Columbus | AI Chatbot Engineer** — I build and audit AI chatbots for small businesses.
+
+- Portfolio & services: [Link hub](https://scratched-monarch-8ee.notion.site/Columbus-AI-Chatbot-Engineer-421f830173258138ae48dadc6fad1dc4)
+- Articles: [dev.to](https://dev.to/columbus0370)
+- Threads / Instagram: @columbus.builds.ai
